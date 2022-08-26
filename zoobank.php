@@ -123,7 +123,7 @@ function clean_doi($doi)
 }
 
 //----------------------------------------------------------------------------------------
-function zoobank_fetch($uuid, $force = false)
+function zoobank_fetch($uuid, $force = false, $debug = false)
 {
 	global $cache;
 	
@@ -135,7 +135,7 @@ function zoobank_fetch($uuid, $force = false)
 	
 	$uuid = strtolower($uuid);
 	
-	if (in_array($uuid, $skip_list))
+	if (in_array($uuid, $skip_list) && $debug)
 	{
 		echo "\n\n*** skip ***\n\n";	
 		return;
@@ -150,7 +150,10 @@ function zoobank_fetch($uuid, $force = false)
 	
 	if (file_exists($json_filename) && !$force)
 	{
-		echo "File exists\n";
+		if ($debug)
+		{
+			echo "File exists\n";
+		}
 		$go = false;
 	}
 	
@@ -232,8 +235,6 @@ function zoobank_to_csl($uuid)
 		//print_r($obj);
 
 		$csl = new stdclass;
-		$csl->id = $obj->referenceuuid;
-		$csl->URL = 'https://zoobank.org/References/' . $obj->referenceuuid;
 
 		foreach ($obj as $k => $v)
 		{
@@ -243,7 +244,7 @@ function zoobank_to_csl($uuid)
 				{
 					case 'referenceuuid':
 						$csl->id = $v;
-						$csl->ZOOBANK = $v;
+						$csl->ZOOBANK = strtoupper($v);
 						$csl->URL = 'https://zoobank.org/References/' . $obj->referenceuuid;
 						break;
 			
@@ -340,6 +341,18 @@ function zoobank_to_csl($uuid)
 			{
 				switch (trim($th->plaintext))
 				{
+					case 'Journal:':
+						$value = trim($th->next_sibling()->plaintext);
+						if (preg_match_all('/(?<issn>[0-9]{4}-[0-9]{3}([0-9]|X))/', $value, $m))
+						{
+							foreach ($m['issn'] as $issn)
+							{
+								$csl->ISSN[] = $issn;
+							}
+							$csl->ISSN = array_unique($csl->ISSN);
+						}
+						break;
+				
 					case 'Date Published:':
 						$value = trim($th->next_sibling()->plaintext);
 						
@@ -399,17 +412,22 @@ function zoobank_to_csl($uuid)
 
 $uuids = array(
 '0AB9F97C-399D-484D-B878-E7B569E3ED3C',
+'592A67E2-F023-4D77-AF2D-82636E9087C6',
 );
 
 $force = false;
+$debug = false;
 
 $count = 1;
 
 foreach ($uuids as $uuid)
 {
-	echo $uuid  . "\n";
+	if ($debug)
+	{
+		echo $uuid  . "\n";
+	}
 
-	zoobank_fetch($uuid, $force);
+	zoobank_fetch($uuid, $force, $debug);
 	
 	$csl = zoobank_to_csl($uuid);
 	
