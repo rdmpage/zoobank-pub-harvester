@@ -218,6 +218,35 @@ function zoobank_retrieve($uuid)
 	return $files;
 }
 
+//----------------------------------------------------------------------------------------
+function zoobank_have($uuid)
+{
+	global $cache;
+	
+	$have = true;
+	
+	$files = array();
+		
+	$basedir = $cache;
+	
+	$uuid = strtolower($uuid);
+	
+	$uuid_path = create_path_from_sha1($uuid, $basedir);
+		
+	$json_filename = $uuid_path . '/' . $uuid . '.json';
+	$html_filename = $uuid_path . '/' . $uuid . '.html';
+
+	$go = true;
+	
+	if (!file_exists($json_filename) || !file_exists($html_filename))
+	{
+		$have = false;
+	}
+
+	return $have;	
+}
+
+
 
 //----------------------------------------------------------------------------------------
 function zoobank_to_csl($uuid)
@@ -408,43 +437,47 @@ function zoobank_to_csl($uuid)
 
 
 
+
 //----------------------------------------------------------------------------------------
 
-$uuids = array(
-'0AB9F97C-399D-484D-B878-E7B569E3ED3C',
-'592A67E2-F023-4D77-AF2D-82636E9087C6',
-);
-
-$force = false;
-$debug = false;
-
-$count = 1;
-
-foreach ($uuids as $uuid)
+if (0)
 {
-	if ($debug)
+	$uuids = array(
+	'0AB9F97C-399D-484D-B878-E7B569E3ED3C',
+	'592A67E2-F023-4D77-AF2D-82636E9087C6',
+	);
+
+	$force = false;
+	$debug = false;
+
+	$count = 1;
+
+	foreach ($uuids as $uuid)
 	{
-		echo $uuid  . "\n";
+		if ($debug)
+		{
+			echo $uuid  . "\n";
+		}
+
+		zoobank_fetch($uuid, $force, $debug);
+	
+		$csl = zoobank_to_csl($uuid);
+	
+		// print_r($csl);
+	
+		// echo json_encode($csl);
+		echo json_encode($csl, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+
+		// Give server a break every 10 items
+		if (($count++ % 10) == 0)
+		{
+			$rand = rand(1000000, 3000000);
+			echo "\n ...sleeping for " . round(($rand / 1000000),2) . ' seconds' . "\n\n";
+			usleep($rand);
+		}
+
 	}
-
-	zoobank_fetch($uuid, $force, $debug);
-	
-	$csl = zoobank_to_csl($uuid);
-	
-	// print_r($csl);
-	
-	// echo json_encode($csl);
-	echo json_encode($csl, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-
-	// Give server a break every 10 items
-	if (($count++ % 10) == 0)
-	{
-		$rand = rand(1000000, 3000000);
-		echo "\n ...sleeping for " . round(($rand / 1000000),2) . ' seconds' . "\n\n";
-		usleep($rand);
-	}
-
 }
 
 ?>
