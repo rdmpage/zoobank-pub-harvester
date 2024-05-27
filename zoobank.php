@@ -262,171 +262,176 @@ function zoobank_to_csl($uuid)
 		$obj = json_decode($files['json']);
 
 		//print_r($obj);
-
-		$csl = new stdclass;
-
-		foreach ($obj as $k => $v)
+		
+		$csl = null;
+		
+		if ($obj)
 		{
-			if ($v != '')
+
+			$csl = new stdclass;
+
+			foreach ($obj as $k => $v)
 			{
-				switch ($k)
+				if ($v != '')
 				{
-					case 'referenceuuid':
-						$csl->id = $v;
-						$csl->ZOOBANK = strtoupper($v);
-						$csl->URL = 'https://zoobank.org/References/' . $obj->referenceuuid;
-						break;
+					switch ($k)
+					{
+						case 'referenceuuid':
+							$csl->id = $v;
+							$csl->ZOOBANK = strtoupper($v);
+							$csl->URL = 'https://zoobank.org/References/' . $obj->referenceuuid;
+							break;
 			
-					case 'volume':
-						$csl->{$k} = $v;
-						break;
+						case 'volume':
+							$csl->{$k} = $v;
+							break;
 
-					case 'title':
-						$csl->{$k} = strip_tags($v);
-						break;
+						case 'title':
+							$csl->{$k} = strip_tags($v);
+							break;
 
-					case 'number':
-						$csl->issue = $v;
-						break;
+						case 'number':
+							$csl->issue = $v;
+							break;
 
-					case 'startpage':
-						$csl->{'page-first'} = $v;
+						case 'startpage':
+							$csl->{'page-first'} = $v;
 					
-						if (!isset($csl->page))
-						{
-							$csl->page = $v;
-						}
-						else
-						{
-							$csl->page = $v . '-' . $csl->page;
-						}
-						break;
+							if (!isset($csl->page))
+							{
+								$csl->page = $v;
+							}
+							else
+							{
+								$csl->page = $v . '-' . $csl->page;
+							}
+							break;
 
-					case 'endpage':
-						if (!isset($csl->page))
-						{
-							$csl->page = $v;
-						}
-						else
-						{
-							$csl->page .= '-' . $v;
-						}
-						break;
+						case 'endpage':
+							if (!isset($csl->page))
+							{
+								$csl->page = $v;
+							}
+							else
+							{
+								$csl->page .= '-' . $v;
+							}
+							break;
 
-					case 'parentreference':
-						$csl->{'container-title'} = $v;
-						break;
+						case 'parentreference':
+							$csl->{'container-title'} = $v;
+							break;
 
-					case 'lsid':
-						$csl->LSID = $v;
-						break;
+						case 'lsid':
+							$csl->LSID = $v;
+							break;
 					
-					case 'year':
-						if (!isset($csl->issued))
-						{
-							$csl->issued = new stdclass;
-							$csl->issued->{'date-parts'} = array();
-							$csl->issued->{'date-parts'}[0] = array();						
-						}
-						$csl->issued->{'date-parts'}[0][] = (Integer)$v;
-						break;
-						
-					case 'authors':
-						foreach ($v as $author_array)
-						{
-							$author = new stdclass;
-							
-							if (isset($author_array[0]->familyname))
-							{
-								$author->family = $author_array[0]->familyname;
-							}
-
-							if (isset($author_array[0]->givenname))
-							{
-								$author->given = $author_array[0]->givenname;
-							}
-
-							if (isset($author_array[0]->gnubuuid))
-							{
-								$author->ZOOBANK = $author_array[0]->gnubuuid;
-							}
-							
-							$csl->author[] = $author;
-						}
-						break;
-			
-					default:
-						break;
-				}
-			}
-		}
-
-		// HTML has some additional stuff such as DOI and a more precise date
-		$dom = HtmlDomParser::str_get_html($files['html']);
-
-		if ($dom)
-		{	
-			foreach ($dom->find('tr th[class=entry_label]') as $th)
-			{
-				switch (trim($th->plaintext))
-				{
-					case 'Journal:':
-						$value = trim($th->next_sibling()->plaintext);
-						if (preg_match_all('/(?<issn>[0-9]{4}-[0-9]{3}([0-9]|X))/', $value, $m))
-						{
-							foreach ($m['issn'] as $issn)
-							{
-								$csl->ISSN[] = $issn;
-							}
-							$csl->ISSN = array_unique($csl->ISSN);
-						}
-						break;
-				
-					case 'Date Published:':
-						$value = trim($th->next_sibling()->plaintext);
-						
-						// date
-						if (preg_match('/(?<date>\d+\s+[A-Z]\w+\s+[0-9]{4})/', $value))
-						{
-							$value = preg_replace('/\s\s+/', ' ', $value);
-							$dateTime = date_create_from_format('d F Y', $value);
-							$Ymd = date_format($dateTime, 'Y-m-d');
-							
+						case 'year':
 							if (!isset($csl->issued))
 							{
 								$csl->issued = new stdclass;
-								$csl->issued->{'date-parts'} = array();													
+								$csl->issued->{'date-parts'} = array();
+								$csl->issued->{'date-parts'}[0] = array();						
 							}
-							$csl->issued->{'date-parts'}[0] = array();	
-							
-							$parts = explode("-", $Ymd);
-							foreach ($parts as $part)
+							$csl->issued->{'date-parts'}[0][] = (Integer)$v;
+							break;
+						
+						case 'authors':
+							foreach ($v as $author_array)
 							{
-								$csl->issued->{'date-parts'}[0][] = (Integer)$part;
+								$author = new stdclass;
+							
+								if (isset($author_array[0]->familyname))
+								{
+									$author->family = $author_array[0]->familyname;
+								}
+
+								if (isset($author_array[0]->givenname))
+								{
+									$author->given = $author_array[0]->givenname;
+								}
+
+								if (isset($author_array[0]->gnubuuid))
+								{
+									$author->ZOOBANK = $author_array[0]->gnubuuid;
+								}
+							
+								$csl->author[] = $author;
 							}
-						}
-						break;
-
-					case 'DOI:':
-						$doi = trim($th->next_sibling()->plaintext);
-						$doi = clean_doi($doi);
-						if ($doi != '')
-						{
-							$csl->DOI = $doi;
-						}
-						break;
-		
-					default:
-						break;
+							break;
+			
+						default:
+							break;
+					}
 				}
-
 			}
 		}
-
-		// set date for DataFeedElement
-		if (isset($dataFeedElement->item->datePublished))
+		
+		if ($csl)
 		{
-			$dataFeedElement->datePublished = $dataFeedElement->item->datePublished;
+
+			// HTML has some additional stuff such as DOI and a more precise date
+			$dom = HtmlDomParser::str_get_html($files['html']);
+
+			if ($dom)
+			{	
+				foreach ($dom->find('tr th[class=entry_label]') as $th)
+				{
+					switch (trim($th->plaintext))
+					{
+						case 'Journal:':
+							$value = trim($th->next_sibling()->plaintext);
+							if (preg_match_all('/(?<issn>[0-9]{4}-[0-9]{3}([0-9]|X))/', $value, $m))
+							{
+								foreach ($m['issn'] as $issn)
+								{
+									$csl->ISSN[] = $issn;
+								}
+								$csl->ISSN = array_unique($csl->ISSN);
+								$csl->ISSN = array_values($csl->ISSN);
+							}
+							break;
+				
+						case 'Date Published:':
+							$value = trim($th->next_sibling()->plaintext);
+						
+							// date
+							if (preg_match('/(?<date>\d+\s+[A-Z]\w+\s+[0-9]{4})/', $value))
+							{
+								$value = preg_replace('/\s\s+/', ' ', $value);
+								$dateTime = date_create_from_format('d F Y', $value);
+								$Ymd = date_format($dateTime, 'Y-m-d');
+							
+								if (!isset($csl->issued))
+								{
+									$csl->issued = new stdclass;
+									$csl->issued->{'date-parts'} = array();													
+								}
+								$csl->issued->{'date-parts'}[0] = array();	
+							
+								$parts = explode("-", $Ymd);
+								foreach ($parts as $part)
+								{
+									$csl->issued->{'date-parts'}[0][] = (Integer)$part;
+								}
+							}
+							break;
+
+						case 'DOI:':
+							$doi = trim($th->next_sibling()->plaintext);
+							$doi = clean_doi($doi);
+							if ($doi != '')
+							{
+								$csl->DOI = $doi;
+							}
+							break;
+		
+						default:
+							break;
+					}
+
+				}
+			}
 		}
 
 	}
